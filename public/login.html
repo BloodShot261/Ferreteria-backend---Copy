@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso - Ferretería G y M</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: linear-gradient(rgba(44, 62, 80, 0.8), rgba(52, 152, 219, 0.8)), 
+                              url('https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?q=80&w=1600');
+            background-size: cover;
+            background-position: center;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border-top: 8px solid #2c3e50;
+        }
+        h1 { color: #2c3e50; font-size: 24px; margin-bottom: 5px; }
+        p { color: #7f8c8d; font-size: 14px; margin-bottom: 30px; }
+        
+        .form-group { margin-bottom: 20px; text-align: left; }
+        .form-group label { display: block; font-weight: bold; font-size: 13px; color: #555; margin-bottom: 5px; }
+        .form-group input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 15px; transition: border-color 0.3s; }
+        .form-group input:focus { border-color: #3498db; outline: none; }
+        
+        .btn-ingresar {
+            background-color: #2c3e50; color: white; border: none; padding: 14px; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 16px; width: 100%; text-transform: uppercase; transition: all 0.3s ease;
+        }
+        .btn-ingresar:hover { background-color: #1a252f; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <h1>📦 Ferretería G y M</h1>
+        <p>Sistema Central de Inventario y Ventas</p>
+
+        <form id="form-login">
+            <div class="form-group">
+                <label>Usuario:</label>
+                <input type="text" id="username" required placeholder="Ej. caja_gym">
+            </div>
+            <div class="form-group">
+                <label>Contraseña:</label>
+                <input type="password" id="password" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn-ingresar">Iniciar Sesión</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('form-login').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const btn = document.querySelector('.btn-ingresar');
+            btn.innerText = "Verificando...";
+            
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // Guardamos la llave universal
+                    sessionStorage.setItem('token_gym', data.token);
+                    
+                    // ENRUTAMIENTO INTELIGENTE DEPENDIENDO DEL ROL
+                    if (data.rol === 'admin') {
+                        window.location.href = 'admin.html';
+                    } else if (data.rol === 'cajero') {
+                        window.location.href = 'index.html';
+                    }
+                } else {
+                    // Reemplazo del alert() tradicional por SweetAlert2
+                    Swal.fire({
+                        title: 'Acceso Denegado',
+                        text: 'Credenciales incorrectas. Verifica tu usuario y contraseña.',
+                        icon: 'error',
+                        confirmButtonColor: '#e74c3c'
+                    });
+                    btn.innerText = "Iniciar Sesión";
+                }
+            } catch (error) {
+                // Reemplazo del alert() tradicional por SweetAlert2
+                Swal.fire({
+                    title: 'Error de Conexión',
+                    text: 'No se pudo conectar al servidor. Verifica que esté encendido.',
+                    icon: 'warning',
+                    confirmButtonColor: '#f39c12'
+                });
+                btn.innerText = "Iniciar Sesión";
+            }
+        });
+    </script>
+</body>
+</html>
