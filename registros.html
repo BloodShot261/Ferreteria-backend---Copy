@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Ventas - Ferretería G y M</title>
+    <script src="sweetalert2.js"></script>
+    <script src="sheetjs.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f0f4f8; color: #2c3e50; }
+        .encabezado { max-width: 1200px; margin: 0 auto 20px auto; display: flex; justify-content: space-between; align-items: center; background: #0056b3; color: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .encabezado h1 { margin: 0; font-size: 20px; font-weight: 600; }
+        
+        .contenedor { max-width: 1200px; margin: 0 auto; }
+        .tarjeta { background: white; border-radius: 10px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; border: 1px solid #e1e8ed; }
+        
+        .filtros-grid { display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; }
+        .form-group { flex: 1; min-width: 200px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #555; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccd1d9; border-radius: 6px; box-sizing: border-box; font-size: 14px; transition: border 0.3s; }
+        .form-group input:focus { border-color: #3498db; outline: none; }
+        
+        .btn { padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: all 0.2s; }
+        .btn-azul { background-color: #3498db; color: white; } .btn-azul:hover { background-color: #2980b9; }
+        .btn-gris { background-color: #ecf0f1; color: #2c3e50; border: 1px solid #bdc3c7; } .btn-gris:hover { background-color: #e0e6ed; }
+        .btn-rojo-outline { background-color: transparent; color: #e74c3c; border: 1px solid #e74c3c; padding: 6px 12px; font-size: 12px;} .btn-rojo-outline:hover { background-color: #e74c3c; color: white; }
+        .btn-verde { background-color: #2ecc71; color: white; } .btn-verde:hover { background-color: #27ae60; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+        th { color: #7f8c8d; font-weight: 600; font-size: 13px; text-transform: uppercase; }
+        tr:hover { background-color: #f8fafc; }
+        
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; }
+        .badge-completada { background-color: #e8f8f5; color: #2ecc71; border: 1px solid #2ecc71; }
+        .badge-anulada { background-color: #fdedec; color: #e74c3c; border: 1px solid #e74c3c; }
+        
+        .acciones-container { display: flex; gap: 8px; align-items: center; }
+    </style>
+</head>
+<body>
+
+    <div class="encabezado">
+        <h1>🧾 Registro Histórico de Ventas</h1>
+        <button id="btn-volver" class="btn btn-gris">⬅ Volver al Menú</button>
+    </div>
+
+    <div class="contenedor">
+        <div class="tarjeta">
+            <h3 style="margin-top: 0; color: #34495e; font-size: 16px;">🔍 Buscar y Filtrar Pagos</h3>
+            <div class="filtros-grid">
+                <div class="form-group">
+                    <label>Buscar Cliente o Folio:</label>
+                    <input type="text" id="filtro-texto" placeholder="Escriba para buscar...">
+                </div>
+                <div class="form-group">
+                    <label>Fecha Inicio:</label>
+                    <input type="date" id="filtro-fecha-inicio">
+                </div>
+                <div class="form-group">
+                    <label>Fecha Fin:</label>
+                    <input type="date" id="filtro-fecha-fin">
+                </div>
+                <div class="form-group" style="flex: 0.5;">
+                    <button class="btn btn-azul" style="width: 100%;" onclick="aplicarFiltros()">Filtrar</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tarjeta">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: #34495e; font-size: 16px;">📋 Facturas Emitidas</h3>
+                <button id="btn-exportar" class="btn btn-verde" onclick="exportarAExcel()" style="display: none;">📊 Exportar a Excel</button>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Folio</th>
+                        <th>Cliente</th>
+                        <th>Fecha y Hora</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpo-tabla-facturas">
+                    <tr><td colspan="6" style="text-align: center;">Cargando registros...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ========================================================
+        // CONFIGURACIÓN DE URL PARA RENDER
+        // ========================================================
+        const API_URL = 'https://ferreteria-backend-cloud.onrender.com';
+        
+        const miToken = sessionStorage.getItem('token_gym');
+        if (!miToken) { window.location.href = 'login.html'; }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('origen') === 'admin') {
+            document.getElementById('btn-exportar').style.display = 'inline-block';
+        }
+
+        let facturasGlobales = [];
+
+        document.getElementById('btn-volver').addEventListener('click', () => {
+            window.history.back(); 
+            setTimeout(() => {
+                const pantallas = JSON.parse(sessionStorage.getItem('pantallas') || '[]');
+                if (pantallas.includes('panel_administracion')) {
+                    window.location.href = 'admin.html';
+                } else {
+                    window.location.href = 'index.html'; 
+                }
+            }, 100);
+        });
+
+        async function cargarFacturas() {
+            try {
+                // CAMBIO: Ahora usa API_URL
+                const res = await fetch(`${API_URL}/facturas`, {
+                    headers: { 'Authorization': 'Bearer ' + miToken }
+                });
+                
+                if (res.ok) {
+                    facturasGlobales = await res.json();
+                    renderizarTabla(facturasGlobales);
+                } else {
+                    throw new Error('No se pudieron cargar las facturas');
+                }
+            } catch (error) {
+                Swal.fire({ title: 'Error de conexión', text: error.message, icon: 'error' });
+            }
+        }
+
+        function renderizarTabla(listaFacturas) {
+            const tbody = document.getElementById('cuerpo-tabla-facturas');
+            tbody.innerHTML = '';
+
+            if (listaFacturas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #7f8c8d;">No hay facturas registradas en este periodo.</td></tr>';
+                return;
+            }
+
+            listaFacturas.forEach(f => {
+                const fechaObj = new Date(f.fecha_emision);
+                const fechaFormateada = fechaObj.toLocaleDateString('es-NI') + ' ' + fechaObj.toLocaleTimeString('es-NI', {hour: '2-digit', minute:'2-digit'});
+                
+                const claseBadge = f.estado === 'Completada' ? 'badge-completada' : 'badge-anulada';
+                
+                const btnDetalles = `<button onclick="verDetalles(${f.id_factura})" class="btn btn-gris" style="padding: 6px 12px; font-size: 12px;">📄 Ver Detalles</button>`;
+                const btnAnular = f.estado === 'Completada' 
+                    ? `<button onclick="anularFactura(${f.id_factura})" class="btn btn-rojo-outline">❌ Anular</button>` 
+                    : `<span style="color: #bdc3c7; font-size: 12px; margin-left: 10px;">(Factura Anulada)</span>`;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>#FAC-${f.id_factura.toString().padStart(4, '0')}</strong></td>
+                        <td>${f.cliente}</td>
+                        <td>📅 ${fechaFormateada}</td>
+                        <td style="font-weight: bold;">C$ ${parseFloat(f.total).toLocaleString('es-NI', {minimumFractionDigits: 2})}</td>
+                        <td><span class="badge ${claseBadge}">${f.estado}</span></td>
+                        <td><div class="acciones-container">${btnDetalles} ${btnAnular}</div></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function aplicarFiltros() {
+            const texto = document.getElementById('filtro-texto').value.toLowerCase();
+            const fechaInicio = document.getElementById('filtro-fecha-inicio').value;
+            const fechaFin = document.getElementById('filtro-fecha-fin').value;
+
+            const facturasFiltradas = facturasGlobales.filter(f => {
+                const coincideTexto = f.cliente.toLowerCase().includes(texto) || f.id_factura.toString().includes(texto);
+                let coincideFecha = true;
+                const fechaFactura = new Date(f.fecha_emision).toISOString().split('T')[0]; 
+
+                if (fechaInicio && fechaFactura < fechaInicio) coincideFecha = false;
+                if (fechaFin && fechaFactura > fechaFin) coincideFecha = false;
+
+                return coincideTexto && coincideFecha;
+            });
+
+            renderizarTabla(facturasFiltradas);
+        }
+
+        document.getElementById('filtro-texto').addEventListener('input', aplicarFiltros);
+
+        async function verDetalles(idFactura) {
+            try {
+                // CAMBIO: Ahora usa API_URL
+                const res = await fetch(`${API_URL}/facturas/${idFactura}/detalles`, {
+                    headers: { 'Authorization': 'Bearer ' + miToken }
+                });
+
+                if (!res.ok) throw new Error('No se pudieron cargar los detalles');
+                const detalles = await res.json();
+
+                let htmlTabla = `
+                    <div style="text-align: left; font-size: 14px;">
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                            <tr style="border-bottom: 2px solid #bdc3c7;">
+                                <th style="padding: 8px 0; color: #34495e;">Producto</th>
+                                <th style="color: #34495e;">Cant.</th>
+                                <th style="color: #34495e;">Precio</th>
+                                <th style="text-align: right; color: #34495e;">Subtotal</th>
+                            </tr>
+                `;
+
+                let totalCalculado = 0;
+                detalles.forEach(item => {
+                    htmlTabla += `
+                        <tr style="border-bottom: 1px solid #ecf0f1;">
+                            <td style="padding: 8px 0;">${item.nombre}</td>
+                            <td>${item.cantidad} ${item.tipo_unidad}</td>
+                            <td>C$ ${parseFloat(item.precio_unitario).toLocaleString('es-NI', {minimumFractionDigits: 2})}</td>
+                            <td style="text-align: right; font-weight: bold;">C$ ${parseFloat(item.subtotal).toLocaleString('es-NI', {minimumFractionDigits: 2})}</td>
+                        </tr>
+                    `;
+                    totalCalculado += parseFloat(item.subtotal);
+                });
+
+                htmlTabla += `
+                        </table>
+                        <div style="text-align: right; margin-top: 15px; font-size: 18px; color: #2ecc71;">
+                            <strong>Total: C$ ${totalCalculado.toLocaleString('es-NI', {minimumFractionDigits: 2})}</strong>
+                        </div>
+                    </div>
+                `;
+
+                Swal.fire({
+                    title: `Detalle de Factura #FAC-${idFactura.toString().padStart(4, '0')}`,
+                    html: htmlTabla,
+                    width: '600px',
+                    confirmButtonText: 'Cerrar',
+                    confirmButtonColor: '#3498db'
+                });
+
+            } catch (error) {
+                Swal.fire('Error', error.message, 'error');
+            }
+        }
+
+        async function anularFactura(idFactura) {
+            const confirmacion = await Swal.fire({
+                title: '¿Anular Factura?',
+                text: `Vas a anular la factura #FAC-${idFactura.toString().padStart(4, '0')}. El stock regresará a la bodega. Esta acción no se puede deshacer.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e74c3c',
+                cancelButtonColor: '#95a5a6',
+                confirmButtonText: 'Sí, Anular y Devolver Stock',
+                cancelButtonText: 'Mantener Factura'
+            });
+
+            if (!confirmacion.isConfirmed) return;
+
+            try {
+                // CAMBIO: Ahora usa API_URL
+                const res = await fetch(`${API_URL}/facturas/${idFactura}/anular`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': 'Bearer ' + miToken }
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    Swal.fire('¡Anulada!', data.mensaje, 'success');
+                    cargarFacturas(); 
+                } else {
+                    throw new Error(data.mensaje);
+                }
+            } catch (error) {
+                Swal.fire('Error', error.message, 'error');
+            }
+        }
+
+        async function exportarAExcel() {
+            try {
+                Swal.fire({
+                    title: 'Generando Reporte...',
+                    text: 'Extrayendo el registro detallado de ventas.',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                // CAMBIO: Ahora usa API_URL
+                const res = await fetch(`${API_URL}/facturas/exportar`, {
+                    headers: { 'Authorization': 'Bearer ' + miToken }
+                });
+
+                if (!res.ok) throw new Error('Error al conectar con el servidor.');
+                const datosExportar = await res.json();
+
+                const texto = document.getElementById('filtro-texto').value.toLowerCase();
+                const fechaInicio = document.getElementById('filtro-fecha-inicio').value;
+                const fechaFin = document.getElementById('filtro-fecha-fin').value;
+
+                const datosFiltrados = datosExportar.filter(fila => {
+                    const coincideTexto = fila['Cliente'].toLowerCase().includes(texto) || fila['Folio Factura'].toString().includes(texto);
+                    
+                    let coincideFecha = true;
+                    const fechaFactura = new Date(fila['Fecha de Emisión']).toISOString().split('T')[0]; 
+
+                    if (fechaInicio && fechaFactura < fechaInicio) coincideFecha = false;
+                    if (fechaFin && fechaFactura > fechaFin) coincideFecha = false;
+
+                    return coincideTexto && coincideFecha;
+                });
+
+                if (datosFiltrados.length === 0) {
+                    Swal.fire('Atención', 'No hay registros de ventas que coincidan con estos filtros.', 'info');
+                    return;
+                }
+
+                const datosLimpios = datosFiltrados.map(fila => {
+                    const fechaObj = new Date(fila['Fecha de Emisión']);
+                    fila['Fecha de Emisión'] = fechaObj.toLocaleDateString('es-NI') + ' ' + fechaObj.toLocaleTimeString('es-NI', {hour: '2-digit', minute:'2-digit'});
+                    return fila;
+                });
+
+                const hojaDeTrabajo = XLSX.utils.json_to_sheet(datosLimpios);
+                const libroDeExcel = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(libroDeExcel, hojaDeTrabajo, "Ventas Detalladas");
+
+                let nombreArchivo = "Reporte_Ventas_Completo.xlsx";
+                if (fechaInicio || fechaFin) {
+                    nombreArchivo = `Reporte_Ventas_${fechaInicio || 'Inicio'}_al_${fechaFin || 'Fin'}.xlsx`;
+                }
+
+                XLSX.writeFile(libroDeExcel, nombreArchivo);
+                Swal.close();
+
+            } catch (error) {
+                Swal.fire('Error al Exportar', error.message, 'error');
+            }
+        }
+
+        cargarFacturas();
+    </script>
+</body>
+</html>

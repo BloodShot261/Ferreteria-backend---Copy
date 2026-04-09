@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caja - Ferretería G y M</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-image: linear-gradient(rgba(135, 206, 250, 0.8), rgba(255, 255, 255, 0.9)), url('https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?q=80&w=1600'); background-size: cover; background-attachment: fixed; background-position: center; }
+        .encabezado { max-width: 1200px; margin: 0 auto 20px auto; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #3498db; padding-bottom: 15px; text-shadow: 1px 1px 2px rgba(255,255,255,0.8); }
+        .encabezado h1 { color: #2c3e50; margin: 0; padding: 0; font-size: 2.2em; }
+        .layout { display: flex; gap: 25px; max-width: 1200px; margin: 0 auto; align-items: flex-start; }
+        .tabla-seccion { flex: 2; background-color: rgba(255, 255, 255, 0.9); padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); overflow-x: auto; backdrop-filter: blur(5px); }
+        .columna-derecha { flex: 1; display: flex; flex-direction: column; gap: 25px; }
+        .panel-seccion { background-color: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border-left: 6px solid #2ecc71; backdrop-filter: blur(5px); }
+        
+        /* Estilo del buscador */
+        .buscador-input { width: 100%; padding: 12px 15px; border: 2px solid #3498db; border-radius: 8px; box-sizing: border-box; font-size: 15px; margin-bottom: 15px; transition: box-shadow 0.3s; }
+        .buscador-input:focus { outline: none; box-shadow: 0 0 10px rgba(52, 152, 219, 0.4); }
+
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+        th, td { border: 1px solid #eee; padding: 12px; text-align: left; font-size: 14px; }
+        th { background-color: #3498db; color: white; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        tr:nth-child(even) { background-color: #fcfcfc; }
+        tr:hover { background-color: #f1f7fc; cursor: pointer; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 7px; font-weight: bold; font-size: 13px; color: #555; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; transition: all 0.3s ease; }
+        .form-group input:focus, .form-group select:focus { border-color: #3498db; box-shadow: 0 0 10px rgba(52, 152, 219, 0.3); outline: none; }
+        .btn-accion { padding: 12px; border: none; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 14px; color: white; width: 100%; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-accion:hover { transform: translateY(-3px); box-shadow: 0 7px 14px rgba(0,0,0,0.2); }
+        .btn-verde { background-color: #2ecc71; } .btn-verde:hover { background-color: #27ae60; }
+        .btn-oscuro { background-color: #34495e; } .btn-oscuro:hover { background-color: #2c3e50; }
+        .btn-rojo { background-color: #e74c3c; margin-top: 8px;} .btn-rojo:hover { background-color: #c0392b; }
+        .ticket-caja { background: white; border: 2px solid #eee; border-radius: 8px; padding: 20px; margin-top: 20px; display: none; box-shadow: inset 0 0 15px rgba(0,0,0,0.05); }
+        .item-carrito { display: flex; justify-content: space-between; font-size: 14px; border-bottom: 1px dashed #ddd; padding: 8px 0; color: #555; align-items: center;}
+        .btn-quitar-item { background: none; border: none; color: #e74c3c; cursor: pointer; font-weight: bold; font-size: 16px; padding: 0 8px 0 0; transition: transform 0.2s; }
+        .btn-quitar-item:hover { transform: scale(1.3); }
+        .total-caja { font-size: 20px; font-weight: bold; color: #2ecc71; text-align: right; margin-top: 15px; padding-top: 15px; border-top: 3px solid #eee; }
+    </style>
+</head>
+<body>
+
+    <div class="encabezado">
+        <h1>🛒 Punto de Venta - Ferretería G y M</h1>
+        <div style="display: flex; gap: 15px;">
+            <button onclick="window.location.href='registros.html'" class="btn-accion btn-oscuro" style="width: auto; padding: 10px 20px; margin-top:0;">🧾 Ver Registros</button>
+            <button id="btn-cerrar-sesion" class="btn-accion btn-rojo" style="width: auto; padding: 10px 20px; margin-top:0;">Cerrar Turno</button>
+        </div>
+    </div>
+
+    <div class="layout">
+        <div class="tabla-seccion">
+            <input type="text" id="buscador-tabla" class="buscador-input" placeholder="🔍 Buscar producto por SKU o Nombre...">
+            
+            <table>
+                <thead><tr><th>SKU</th><th>Producto</th><th>Stock Actual</th><th>Precio Venta</th></tr></thead>
+                <tbody id="cuerpo-tabla"><tr><td colspan="4" style="text-align: center;">Cargando inventario...</td></tr></tbody>
+            </table>
+        </div>
+
+        <div class="columna-derecha">
+            <div class="panel-seccion">
+                <h2 style="color: #2ecc71; margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px;">🛒 Caja Registradora</h2>
+                <form id="form-agregar-carrito">
+                    <div class="form-group"><label>Producto:</label><select id="venta-producto" required></select></div>
+                    <div style="display: flex; gap: 10px; align-items: flex-end;">
+                        <div class="form-group" style="flex: 2; margin-bottom: 0;"><label>Cant:</label><input type="number" id="venta-cantidad" min="0.01" step="0.01" placeholder="Ej. 1 o 0.5" required></div>
+                        <div style="flex: 3;"><button type="submit" class="btn-accion btn-verde">+ Añadir</button></div>
+                    </div>
+                </form>
+
+                <div id="contenedor-ticket" class="ticket-caja">
+                    <h3 style="margin-top:0; font-size: 16px; text-align: center; text-transform: uppercase; color: #7f8c8d;">🧾 Detalle</h3>
+                    <div id="lista-carrito"></div>
+                    <div class="total-caja">Total: C$ <span id="gran-total">0.00</span></div>
+                    <button id="btn-cobrar" class="btn-accion btn-oscuro" style="margin-top: 20px; font-size: 16px;">💲 Cobrar Cuenta</button>
+                    <button id="btn-vaciar" class="btn-accion btn-rojo">🗑️ Vaciar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN DE URL PARA RENDER
+        const API_URL = 'https://ferreteria-backend-cloud.onrender.com';
+
+        const miToken = sessionStorage.getItem('token_gym');
+        if (!miToken) { window.location.href = 'login.html'; }
+
+        document.getElementById('btn-cerrar-sesion').addEventListener('click', async () => {
+            const confirmacion = await Swal.fire({ title: '¿Cerrar Turno?', text: "Se cerrará tu sesión actual.", icon: 'question', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#95a5a6', confirmButtonText: 'Sí, salir', cancelButtonText: 'Cancelar' });
+            if (confirmacion.isConfirmed) { sessionStorage.removeItem('token_gym'); window.location.href = 'login.html'; }
+        });
+
+        let catalogoGlobal = []; 
+        let carritoCompras = []; 
+        
+        // CAMBIO: Ahora las URLs usan el servidor de Render
+        const urls = { 
+            inventario: `${API_URL}/inventario`, 
+            ventas: `${API_URL}/ventas` 
+        };
+
+        async function cargarInventario() {
+            try {
+                const res = await fetch(urls.inventario);
+                catalogoGlobal = await res.json(); 
+                const tbody = document.getElementById('cuerpo-tabla');
+                const select = document.getElementById('venta-producto');
+                tbody.innerHTML = ''; select.innerHTML = '<option value="">Selecciona un producto...</option>';
+
+                catalogoGlobal.forEach(p => {
+                    tbody.innerHTML += `<tr class="fila-producto"><td><strong>${p.sku}</strong></td><td>${p.nombre}</td>
+                        <td style="font-weight: bold; color: ${p.cantidad_disponible < 15 ? '#e74c3c' : '#2ecc71'};">${p.cantidad_disponible} ${p.tipo_unidad}</td>
+                        <td>C$ ${p.precio_venta}</td></tr>`;
+                    select.innerHTML += `<option value="${p.id_producto}">${p.nombre} (Disp: ${p.cantidad_disponible})</option>`;
+                });
+            } catch (e) {
+                Swal.fire({ title: 'Error', text: 'No se pudo cargar el inventario del servidor en la nube.', icon: 'error', confirmButtonColor: '#e74c3c' });
+            }
+        }
+
+        document.getElementById('buscador-tabla').addEventListener('input', function() {
+            const textoBuscado = this.value.toLowerCase();
+            const filas = document.querySelectorAll('.fila-producto');
+
+            filas.forEach(fila => {
+                const contenidoFila = fila.textContent.toLowerCase();
+                if (contenidoFila.includes(textoBuscado)) {
+                    fila.style.display = ''; 
+                } else {
+                    fila.style.display = 'none'; 
+                }
+            });
+        });
+
+        document.getElementById('form-agregar-carrito').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id = parseInt(document.getElementById('venta-producto').value);
+            const cant = parseFloat(document.getElementById('venta-cantidad').value);
+            const prod = catalogoGlobal.find(p => p.id_producto === id);
+            const yaEnCarrito = carritoCompras.find(i => i.id === id);
+            const totalIntento = yaEnCarrito ? yaEnCarrito.cantidad + cant : cant;
+
+            if (totalIntento > parseFloat(prod.cantidad_disponible)) {
+                return Swal.fire({ title: 'Stock Insuficiente', text: `Solo quedan ${prod.cantidad_disponible} en bodega.`, icon: 'warning', confirmButtonColor: '#f39c12' });
+            }
+
+            if (yaEnCarrito) { yaEnCarrito.cantidad += cant; yaEnCarrito.subtotal = yaEnCarrito.cantidad * parseFloat(prod.precio_venta); } 
+            else { carritoCompras.push({ id, nombre: prod.nombre, cantidad: cant, subtotal: cant * parseFloat(prod.precio_venta) }); }
+            this.reset(); dibujarTicket();
+        });
+
+        window.quitarDelCarrito = function(idProducto) { carritoCompras = carritoCompras.filter(item => item.id !== idProducto); dibujarTicket(); };
+
+        function dibujarTicket() {
+            const cont = document.getElementById('contenedor-ticket');
+            const lista = document.getElementById('lista-carrito');
+            if (carritoCompras.length === 0) return cont.style.display = 'none';
+            cont.style.display = 'block'; lista.innerHTML = ''; let total = 0;
+            carritoCompras.forEach(i => {
+                total += i.subtotal;
+                lista.innerHTML += `<div class="item-carrito"><span><button onclick="quitarDelCarrito(${i.id})" class="btn-quitar-item" title="Quitar">✖</button><strong>${i.cantidad}</strong>x ${i.nombre}</span><span>C$ ${i.subtotal.toFixed(2)}</span></div>`;
+            });
+            document.getElementById('gran-total').innerText = total.toFixed(2);
+        }
+
+        document.getElementById('btn-cobrar').addEventListener('click', async function() {
+            if (carritoCompras.length === 0) return;
+
+            const { value: nombreCliente, isConfirmed } = await Swal.fire({
+                title: 'Datos de la Factura',
+                input: 'text',
+                inputLabel: 'Nombre del Cliente (Dejar en blanco para "Mostrador")',
+                inputPlaceholder: 'Ej. Juan Pérez',
+                showCancelButton: true,
+                confirmButtonText: 'Procesar Cobro',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#2ecc71',
+                cancelButtonColor: '#95a5a6'
+            });
+
+            if (!isConfirmed) return;
+
+            this.innerText = "⏳ Emitiendo Factura..."; 
+            this.disabled = true;
+
+            let granTotal = 0;
+            const carritoFormateado = carritoCompras.map(item => {
+                granTotal += item.subtotal;
+                return {
+                    id: item.id,
+                    cantidad: item.cantidad,
+                    precio: item.subtotal / item.cantidad, 
+                    subtotal: item.subtotal
+                };
+            });
+
+            try {
+                // CAMBIO: Ahora usa la URL de Render
+                const res = await fetch(urls.ventas, { 
+                    method: 'POST', 
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': 'Bearer ' + miToken 
+                    }, 
+                    body: JSON.stringify({ 
+                        cliente: nombreCliente, 
+                        carrito: carritoFormateado, 
+                        total: granTotal 
+                    }) 
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.mensaje || 'Problema al procesar la factura.');
+                }
+
+                Swal.fire({ 
+                    title: '¡Factura Emitida!', 
+                    text: `La venta se guardó correctamente. Factura #${data.id_factura}`, 
+                    icon: 'success', 
+                    confirmButtonColor: '#2ecc71' 
+                });
+
+                carritoCompras = []; 
+                dibujarTicket(); 
+                cargarInventario(); 
+
+            } catch (error) { 
+                Swal.fire({ 
+                    title: 'Venta Rechazada', 
+                    text: error.message, 
+                    icon: 'error', 
+                    confirmButtonColor: '#e74c3c' 
+                }); 
+            } finally { 
+                this.innerText = "💲 Cobrar Cuenta"; 
+                this.disabled = false; 
+            }
+        });
+
+        document.getElementById('btn-vaciar').addEventListener('click', async () => { 
+            if (carritoCompras.length === 0) return;
+            const confirmacion = await Swal.fire({ title: '¿Vaciar cuenta?', text: "Se eliminarán los productos.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#95a5a6', confirmButtonText: 'Sí, vaciar', cancelButtonText: 'Cancelar' });
+            if (confirmacion.isConfirmed) { carritoCompras = []; dibujarTicket(); }
+        });
+
+        cargarInventario();
+    </script>
+</body>
+</html>
