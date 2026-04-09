@@ -93,15 +93,16 @@
     </div>
 
     <script>
+        // ========================================================
+        // CONFIGURACIÓN DE URL PARA RENDER
+        // ========================================================
+        const API_URL = 'https://ferreteria-backend-cloud.onrender.com';
+        
         const miToken = sessionStorage.getItem('token_gym');
         if (!miToken) { window.location.href = 'login.html'; }
 
-        // ========================================================
-        // NUEVA LÓGICA: Mostrar Excel SOLO si entramos por la puerta del Admin
-        // ========================================================
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('origen') === 'admin') {
-            // Solo si la URL termina en "?origen=admin" mostramos el botón
             document.getElementById('btn-exportar').style.display = 'inline-block';
         }
 
@@ -121,7 +122,8 @@
 
         async function cargarFacturas() {
             try {
-                const res = await fetch('/facturas', {
+                // CAMBIO: Ahora usa API_URL
+                const res = await fetch(`${API_URL}/facturas`, {
                     headers: { 'Authorization': 'Bearer ' + miToken }
                 });
                 
@@ -192,7 +194,8 @@
 
         async function verDetalles(idFactura) {
             try {
-                const res = await fetch(`/facturas/${idFactura}/detalles`, {
+                // CAMBIO: Ahora usa API_URL
+                const res = await fetch(`${API_URL}/facturas/${idFactura}/detalles`, {
                     headers: { 'Authorization': 'Bearer ' + miToken }
                 });
 
@@ -259,7 +262,8 @@
             if (!confirmacion.isConfirmed) return;
 
             try {
-                const res = await fetch(`/facturas/${idFactura}/anular`, {
+                // CAMBIO: Ahora usa API_URL
+                const res = await fetch(`${API_URL}/facturas/${idFactura}/anular`, {
                     method: 'PUT',
                     headers: { 'Authorization': 'Bearer ' + miToken }
                 });
@@ -286,7 +290,8 @@
                     didOpen: () => { Swal.showLoading(); }
                 });
 
-                const res = await fetch('/facturas/exportar', {
+                // CAMBIO: Ahora usa API_URL
+                const res = await fetch(`${API_URL}/facturas/exportar`, {
                     headers: { 'Authorization': 'Bearer ' + miToken }
                 });
 

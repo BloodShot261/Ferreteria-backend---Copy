@@ -33,7 +33,6 @@
         
         .btn-accion { padding: 12px; border: none; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 14px; color: white; width: 100%; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
         .btn-accion:hover { transform: translateY(-3px); box-shadow: 0 7px 14px rgba(0,0,0,0.25); }
-        .btn-accion:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         .btn-naranja { background-color: #f39c12; } .btn-naranja:hover { background-color: #d68910; }
         .btn-azul { background-color: #3498db; } .btn-azul:hover { background-color: #2980b9; }
         .btn-morado { background-color: #9b59b6; } .btn-morado:hover { background-color: #8e44ad; }
@@ -41,10 +40,7 @@
         .btn-verde { background-color: #2ecc71; margin-bottom: 10px; } .btn-verde:hover { background-color: #27ae60; }
         .btn-salir { background-color: #e74c3c; width: auto; padding: 10px 20px; font-size: 13px; margin-top: 0;} .btn-salir:hover { background-color: #c0392b; }
         h2 { margin-top: 0; font-size: 17px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-
-        /* Estilo para los inputs dentro de la tabla de SweetAlert */
         .swal-input-excel { width: 100%; box-sizing: border-box; border: 1px solid #ccc; padding: 5px; border-radius: 4px; font-size: 13px; }
-        .swal-input-excel:focus { border-color: #3498db; outline: none; }
     </style>
 </head>
 <body>
@@ -68,7 +64,6 @@
         </div>
 
         <div class="columna-derecha">
-            
             <div class="panel-seccion" style="border-left: 6px solid #2ecc71; padding-bottom: 10px;">
                 <h2 style="color: #2ecc71; margin-bottom: 15px;">📥 Importación Masiva</h2>
                 <input type="file" id="input-excel" accept=".xlsx, .xls" style="display: none;">
@@ -108,12 +103,10 @@
                 <h2 style="color: #9b59b6;">✏️ Editar Inventario</h2>
                 <form id="form-editar-producto">
                     <div class="form-group"><label>Modificar Producto:</label><select id="editar-producto" required></select></div>
-                    
                     <div style="display: flex; gap: 10px;">
                         <div class="form-group" style="flex: 2;"><label>Nombre:</label><input type="text" id="editar-nombre" required></div>
                         <div class="form-group" style="flex: 1;"><label>Unidad:</label><input type="text" id="editar-unidad" required></div>
                     </div>
-
                     <div style="display: flex; gap: 10px;">
                         <div class="form-group" style="flex: 1;"><label>Cant. Real:</label><input type="number" id="editar-cantidad" step="0.01" required></div>
                         <div class="form-group" style="flex: 1;"><label>P. Compra:</label><input type="number" id="editar-compra" step="0.01" required></div>
@@ -134,11 +127,18 @@
     </div>
 
     <script>
+        // CONFIGURACIÓN DE URL PARA RENDER
+        const API_URL = 'https://ferreteria-backend-cloud.onrender.com';
+
         const miToken = sessionStorage.getItem('token_gym');
         if (!miToken) { window.location.href = 'login.html'; }
 
         let catalogoAdmin = [];
-        const urls = { inventario: '/inventario', entradas: '/entradas', productos: '/productos' };
+        const urls = { 
+            inventario: `${API_URL}/inventario`, 
+            entradas: `${API_URL}/entradas`, 
+            productos: `${API_URL}/productos` 
+        };
 
         document.getElementById('btn-cerrar-sesion').addEventListener('click', () => {
             sessionStorage.removeItem('token_gym'); window.location.href = 'login.html';
@@ -166,168 +166,83 @@
                     selEntrada.innerHTML += opcion; selEditar.innerHTML += opcion; selEliminar.innerHTML += opcion;
                 });
             } catch (e) {
-                Swal.fire({ title: 'Error', text: 'No se pudo conectar al servidor.', icon: 'error', confirmButtonColor: '#e74c3c' });
+                Swal.fire({ title: 'Error', text: 'Fallo al conectar con la nube.', icon: 'error', confirmButtonColor: '#e74c3c' });
             }
         }
 
-        // =========================================================================
-        // LÓGICA: Leer Excel, mostrar Vista Previa Editable y Enviar Masivo
-        // =========================================================================
         document.getElementById('input-excel').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
                 const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                
                 const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" }); 
-
-                if (jsonData.length === 0) {
-                    Swal.fire('Error', 'El archivo Excel parece estar vacío.', 'error');
-                    return;
-                }
-
+                if (jsonData.length === 0) return Swal.fire('Error', 'Excel vacío.', 'error');
                 mostrarVistaPreviaExcel(jsonData);
             };
             reader.readAsArrayBuffer(file);
-            
             this.value = '';
         });
 
         function mostrarVistaPreviaExcel(datos) {
-            let html = `
-                <div style="text-align: left; font-size: 13px; color: #7f8c8d; margin-bottom: 10px;">
-                    Se encontraron <b>${datos.length}</b> registros. Rellena o edita los campos vacíos antes de guardar.
-                </div>
-                <div style="overflow-x: auto; max-height: 450px; border: 1px solid #eee; border-radius: 8px;">
-                    <table style="width: 100%; border-collapse: collapse; text-align: left;" id="tabla-preview-excel">
-                        <thead style="background: #34495e; color: white; position: sticky; top: 0; z-index: 1;">
-                            <tr>
-                                <th style="padding: 10px; min-width: 90px;">SKU</th>
-                                <th style="padding: 10px; min-width: 180px;">Nombre del Producto</th>
-                                <th style="padding: 10px; width: 80px;">Unidad</th>
-                                <th style="padding: 10px; width: 70px;">Cant.</th>
-                                <th style="padding: 10px; width: 90px;">P. Compra</th>
-                                <th style="padding: 10px; width: 90px;">P. Venta</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
+            let html = `<div style="overflow-x: auto; max-height: 400px;"><table style="width: 100%; font-size: 12px;" id="tabla-preview-excel">
+                <thead style="background: #2c3e50; color: white;"><tr><th>SKU</th><th>Nombre</th><th>Unidad</th><th>Cant</th><th>Compra</th><th>Venta</th></tr></thead><tbody>`;
             datos.forEach((row) => {
-                const sku = row.SKU || row.sku || row.Codigo || '';
-                const nombre = row.Nombre || row.nombre || row.Producto || row.producto || '';
-                const unidad = row.Unidad || row.unidad || row.Tipo || 'Unidad';
-                const cant = row.Cantidad || row.cantidad || row.Stock || 0;
-                const compra = row.Compra || row.Costo || row.precio_compra || 0;
-                const venta = row.Venta || row.Precio || row.precio_venta || 0;
-
-                html += `
-                    <tr class="fila-excel" style="border-bottom: 1px solid #f1f2f6;">
-                        <td style="padding: 5px;"><input type="text" class="swal-input-excel" value="${sku}" placeholder="Requerido"></td>
-                        <td style="padding: 5px;"><input type="text" class="swal-input-excel" value="${nombre}" placeholder="Requerido"></td>
-                        <td style="padding: 5px;"><input type="text" class="swal-input-excel" value="${unidad}"></td>
-                        <td style="padding: 5px;"><input type="number" class="swal-input-excel" value="${cant}" step="0.01"></td>
-                        <td style="padding: 5px;"><input type="number" class="swal-input-excel" value="${compra}" step="0.01"></td>
-                        <td style="padding: 5px;"><input type="number" class="swal-input-excel" value="${venta}" step="0.01"></td>
-                    </tr>
-                `;
+                html += `<tr class="fila-excel">
+                    <td><input type="text" class="swal-input-excel" value="${row.SKU || ''}"></td>
+                    <td><input type="text" class="swal-input-excel" value="${row.Nombre || ''}"></td>
+                    <td><input type="text" class="swal-input-excel" value="${row.Unidad || 'Unidad'}"></td>
+                    <td><input type="number" class="swal-input-excel" value="${row.Cantidad || 0}"></td>
+                    <td><input type="number" class="swal-input-excel" value="${row.Compra || 0}"></td>
+                    <td><input type="number" class="swal-input-excel" value="${row.Venta || 0}"></td>
+                </tr>`;
             });
-
             html += `</tbody></table></div>`;
 
             Swal.fire({
-                title: 'Vista Previa (Data Staging)',
+                title: 'Vista Previa Excel',
                 html: html,
-                width: '900px',
+                width: '850px',
                 showCancelButton: true,
-                confirmButtonText: '✅ Confirmar y Subir al Sistema',
-                cancelButtonText: '❌ Cancelar',
-                confirmButtonColor: '#2ecc71',
-                cancelButtonColor: '#e74c3c',
+                confirmButtonText: 'Subir a Render',
                 preConfirm: () => {
-                    const filas = document.querySelectorAll('.fila-excel');
-                    const datosParaBackend = [];
-                    let errorFaltante = false;
-
-                    filas.forEach(fila => {
+                    const productos = [];
+                    document.querySelectorAll('.fila-excel').forEach(fila => {
                         const inputs = fila.querySelectorAll('input');
-                        const producto = {
-                            sku: inputs[0].value.trim(),
-                            nombre: inputs[1].value.trim(),
-                            tipo_unidad: inputs[2].value.trim() || 'Unidad',
-                            cantidad: parseFloat(inputs[3].value) || 0,
-                            precio_compra: parseFloat(inputs[4].value) || 0,
-                            precio_venta: parseFloat(inputs[5].value) || 0
-                        };
-
-                        if (producto.sku === '' || producto.nombre === '') {
-                            errorFaltante = true;
-                        }
-
-                        datosParaBackend.push(producto);
+                        productos.push({
+                            sku: inputs[0].value, nombre: inputs[1].value, tipo_unidad: inputs[2].value,
+                            cantidad: parseFloat(inputs[3].value), precio_compra: parseFloat(inputs[4].value), precio_venta: parseFloat(inputs[5].value)
+                        });
                     });
-
-                    if (errorFaltante) {
-                        Swal.showValidationMessage('Todos los productos deben tener su SKU y Nombre rellenados.');
-                        return false;
-                    }
-
-                    return datosParaBackend; 
+                    return productos;
                 }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    enviarCargaMasiva(result.value);
-                }
-            });
+            }).then((result) => { if (result.isConfirmed) enviarCargaMasiva(result.value); });
         }
 
         async function enviarCargaMasiva(productosArray) {
             try {
-                Swal.fire({ title: 'Procesando Inventario...', text: 'Registrando lotes en la base de datos de MySQL', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-                
-                const res = await fetch('/productos/masivo', {
+                Swal.fire({ title: 'Cargando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                const res = await fetch(`${API_URL}/productos/masivo`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + miToken },
                     body: JSON.stringify(productosArray)
                 });
-                
-                const data = await res.json();
-                
-                if (res.ok) {
-                    Swal.fire('¡Carga Exitosa!', data.mensaje, 'success');
-                    cargarInventario(); 
-                } else {
-                    Swal.fire('Error en la carga', data.mensaje, 'error');
-                }
-            } catch (error) {
-                Swal.fire('Error de red', 'Fallo al comunicarse con el servidor', 'error');
-            }
+                if (res.ok) { Swal.fire('¡Éxito!', 'Inventario actualizado.', 'success'); cargarInventario(); }
+            } catch (error) { Swal.fire('Error', 'No se pudo subir.', 'error'); }
         }
-        // =========================================================================
 
         document.getElementById('buscador-tabla-admin').addEventListener('input', function() {
-            const textoBuscado = this.value.toLowerCase();
-            const filas = document.querySelectorAll('.fila-producto');
-
-            filas.forEach(fila => {
-                const contenidoFila = fila.textContent.toLowerCase();
-                if (contenidoFila.includes(textoBuscado)) {
-                    fila.style.display = ''; 
-                } else {
-                    fila.style.display = 'none'; 
-                }
+            const texto = this.value.toLowerCase();
+            document.querySelectorAll('.fila-producto').forEach(fila => {
+                fila.style.display = fila.textContent.toLowerCase().includes(texto) ? '' : 'none';
             });
         });
 
         document.getElementById('editar-producto').addEventListener('change', function() {
-            const idSeleccionado = parseInt(this.value);
-            if (!idSeleccionado) return;
-            const prod = catalogoAdmin.find(p => p.id_producto === idSeleccionado);
-            
+            const prod = catalogoAdmin.find(p => p.id_producto == this.value);
+            if (!prod) return;
             document.getElementById('editar-nombre').value = prod.nombre;
             document.getElementById('editar-unidad').value = prod.tipo_unidad;
             document.getElementById('editar-cantidad').value = prod.cantidad_disponible;
@@ -337,35 +252,29 @@
 
         document.getElementById('form-editar-producto').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const idProd = document.getElementById('editar-producto').value;
             try {
-                const res = await fetch(`${urls.productos}/${idProd}`, {
+                const res = await fetch(`${urls.productos}/${document.getElementById('editar-producto').value}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + miToken },
                     body: JSON.stringify({
-                        nombre: document.getElementById('editar-nombre').value,
-                        tipo_unidad: document.getElementById('editar-unidad').value,
+                        nombre: document.getElementById('editar-nombre').value, tipo_unidad: document.getElementById('editar-unidad').value,
                         cantidad_disponible: parseFloat(document.getElementById('editar-cantidad').value),
-                        precio_compra: parseFloat(document.getElementById('editar-compra').value),
-                        precio_venta: parseFloat(document.getElementById('editar-venta').value)
+                        precio_compra: parseFloat(document.getElementById('editar-compra').value), precio_venta: parseFloat(document.getElementById('editar-venta').value)
                     })
                 });
-                if (res.ok) { 
-                    Swal.fire({ title: '¡Éxito!', text: 'Producto editado exitosamente.', icon: 'success', confirmButtonColor: '#2ecc71' });
-                    this.reset(); cargarInventario(); 
-                } else { Swal.fire({ title: 'Error', text: 'No se pudo editar.', icon: 'error', confirmButtonColor: '#e74c3c' }); }
-            } catch (error) { Swal.fire({ title: 'Error de red', text: 'No se conectó al servidor.', icon: 'error', confirmButtonColor: '#e74c3c' }); }
+                if (res.ok) { Swal.fire('Actualizado', '', 'success'); cargarInventario(); }
+            } catch (e) { }
         });
 
         document.getElementById('form-eliminar-producto').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const idProd = document.getElementById('eliminar-producto').value;
-            const confirmacion = await Swal.fire({ title: '¿Estás seguro?', text: "Se borrará este producto para siempre.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#95a5a6', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar' });
-            if (!confirmacion.isConfirmed) return;
+            const conf = await Swal.fire({ title: '¿Borrar?', showCancelButton: true });
+            if (!conf.isConfirmed) return;
             try {
-                const res = await fetch(`${urls.productos}/${idProd}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + miToken } });
-                if (res.ok) { Swal.fire({ title: '¡Eliminado!', text: 'Producto borrado.', icon: 'success', confirmButtonColor: '#2ecc71' }); this.reset(); cargarInventario(); } 
-                else { Swal.fire({ title: 'Error', text: 'No se pudo eliminar.', icon: 'error', confirmButtonColor: '#e74c3c' }); }
-            } catch (error) { Swal.fire({ title: 'Error de red', text: 'No se conectó al servidor.', icon: 'error', confirmButtonColor: '#e74c3c' }); }
+                const res = await fetch(`${urls.productos}/${document.getElementById('eliminar-producto').value}`, { 
+                    method: 'DELETE', headers: { 'Authorization': 'Bearer ' + miToken } 
+                });
+                if (res.ok) { Swal.fire('Borrado', '', 'success'); cargarInventario(); }
+            } catch (e) { }
         });
 
         document.getElementById('form-entradas').addEventListener('submit', async function(e) {
@@ -375,8 +284,8 @@
                     method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + miToken },
                     body: JSON.stringify({ id_producto: parseInt(document.getElementById('entrada-producto').value), cantidad_agregada: parseFloat(document.getElementById('entrada-cantidad').value), notas: "Admin" })
                 });
-                if (res.ok) { Swal.fire({ title: '¡Stock agregado!', text: 'Inventario actualizado.', icon: 'success', confirmButtonColor: '#2ecc71' }); this.reset(); cargarInventario(); } 
-            } catch (error) {}
+                if (res.ok) { Swal.fire('Sumado', '', 'success'); cargarInventario(); } 
+            } catch (e) {}
         });
 
         document.getElementById('form-nuevo-producto').addEventListener('submit', async function(e) {
@@ -389,9 +298,8 @@
             };
             try {
                 const res = await fetch(urls.productos, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + miToken }, body: JSON.stringify(prod) });
-                if (res.ok) { Swal.fire({ title: '¡Creado!', text: 'Producto agregado.', icon: 'success', confirmButtonColor: '#2ecc71' }); this.reset(); cargarInventario(); } 
-                else { Swal.fire({ title: 'Error', text: 'SKU duplicado o datos inválidos.', icon: 'error', confirmButtonColor: '#e74c3c' }); }
-            } catch (error) {}
+                if (res.ok) { Swal.fire('Creado', '', 'success'); cargarInventario(); } 
+            } catch (e) {}
         });
 
         cargarInventario();

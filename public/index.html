@@ -82,6 +82,9 @@
     </div>
 
     <script>
+        // CONFIGURACIÓN DE URL PARA RENDER
+        const API_URL = 'https://ferreteria-backend-cloud.onrender.com';
+
         const miToken = sessionStorage.getItem('token_gym');
         if (!miToken) { window.location.href = 'login.html'; }
 
@@ -92,7 +95,12 @@
 
         let catalogoGlobal = []; 
         let carritoCompras = []; 
-        const urls = { inventario: '/inventario', ventas: '/ventas' };
+        
+        // CAMBIO: Ahora las URLs usan el servidor de Render
+        const urls = { 
+            inventario: `${API_URL}/inventario`, 
+            ventas: `${API_URL}/ventas` 
+        };
 
         async function cargarInventario() {
             try {
@@ -109,11 +117,10 @@
                     select.innerHTML += `<option value="${p.id_producto}">${p.nombre} (Disp: ${p.cantidad_disponible})</option>`;
                 });
             } catch (e) {
-                Swal.fire({ title: 'Error', text: 'No se pudo cargar el inventario.', icon: 'error', confirmButtonColor: '#e74c3c' });
+                Swal.fire({ title: 'Error', text: 'No se pudo cargar el inventario del servidor en la nube.', icon: 'error', confirmButtonColor: '#e74c3c' });
             }
         }
 
-        // === LÓGICA DEL BUSCADOR EN TIEMPO REAL ===
         document.getElementById('buscador-tabla').addEventListener('input', function() {
             const textoBuscado = this.value.toLowerCase();
             const filas = document.querySelectorAll('.fila-producto');
@@ -121,9 +128,9 @@
             filas.forEach(fila => {
                 const contenidoFila = fila.textContent.toLowerCase();
                 if (contenidoFila.includes(textoBuscado)) {
-                    fila.style.display = ''; // Mostrar
+                    fila.style.display = ''; 
                 } else {
-                    fila.style.display = 'none'; // Ocultar
+                    fila.style.display = 'none'; 
                 }
             });
         });
@@ -159,11 +166,9 @@
             document.getElementById('gran-total').innerText = total.toFixed(2);
         }
 
-        // === NUEVO SISTEMA DE COBRO (FACTURACIÓN TRANSACCIONAL) ===
         document.getElementById('btn-cobrar').addEventListener('click', async function() {
             if (carritoCompras.length === 0) return;
 
-            // 1. Pedir el nombre del cliente usando SweetAlert2
             const { value: nombreCliente, isConfirmed } = await Swal.fire({
                 title: 'Datos de la Factura',
                 input: 'text',
@@ -176,26 +181,24 @@
                 cancelButtonColor: '#95a5a6'
             });
 
-            // Si el cajero le dio a "Cancelar", detenemos el proceso
             if (!isConfirmed) return;
 
             this.innerText = "⏳ Emitiendo Factura..."; 
             this.disabled = true;
 
-            // 2. Calcular el total y formatear el carrito para el Backend
             let granTotal = 0;
             const carritoFormateado = carritoCompras.map(item => {
                 granTotal += item.subtotal;
                 return {
                     id: item.id,
                     cantidad: item.cantidad,
-                    precio: item.subtotal / item.cantidad, // Calculamos el precio unitario
+                    precio: item.subtotal / item.cantidad, 
                     subtotal: item.subtotal
                 };
             });
 
             try {
-                // 3. Enviar todo el paquete en una sola petición
+                // CAMBIO: Ahora usa la URL de Render
                 const res = await fetch(urls.ventas, { 
                     method: 'POST', 
                     headers: { 
@@ -203,7 +206,7 @@
                         'Authorization': 'Bearer ' + miToken 
                     }, 
                     body: JSON.stringify({ 
-                        cliente: nombreCliente, // Si está vacío, el backend pondrá "Cliente Mostrador"
+                        cliente: nombreCliente, 
                         carrito: carritoFormateado, 
                         total: granTotal 
                     }) 
@@ -215,7 +218,6 @@
                     throw new Error(data.mensaje || 'Problema al procesar la factura.');
                 }
 
-                // 4. Éxito: Mostrar el número de factura generado
                 Swal.fire({ 
                     title: '¡Factura Emitida!', 
                     text: `La venta se guardó correctamente. Factura #${data.id_factura}`, 
@@ -223,7 +225,6 @@
                     confirmButtonColor: '#2ecc71' 
                 });
 
-                // 5. Limpiar la caja
                 carritoCompras = []; 
                 dibujarTicket(); 
                 cargarInventario(); 
