@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administración - Ferretería G y M</title>
-    <script src="sweetalert2.js"></script>
-    <script src="sheetjs.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-image: linear-gradient(rgba(44, 62, 80, 0.8), rgba(255, 255, 255, 0.9)), url('https://images.unsplash.com/photo-1518709766631-a6a7f4593b6f?q=80&w=1600'); background-size: cover; background-attachment: fixed; background-position: center; }
@@ -127,18 +127,13 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN DE URL PARA RENDER
-        const API_URL = 'https://ferreteria-backend-cloud.onrender.com';
+        // CONFIGURACIÓN PARA RENDER (Ruta relativa)
+        const API_URL = ''; 
 
         const miToken = sessionStorage.getItem('token_gym');
         if (!miToken) { window.location.href = 'login.html'; }
 
         let catalogoAdmin = [];
-        const urls = { 
-            inventario: `${API_URL}/inventario`, 
-            entradas: `${API_URL}/entradas`, 
-            productos: `${API_URL}/productos` 
-        };
 
         document.getElementById('btn-cerrar-sesion').addEventListener('click', () => {
             sessionStorage.removeItem('token_gym'); window.location.href = 'login.html';
@@ -146,7 +141,13 @@
 
         async function cargarInventario() {
             try {
-                const res = await fetch(urls.inventario);
+                // CORRECCIÓN: Se requiere Token para ver inventario en la nube
+                const res = await fetch(`${API_URL}/inventario`, {
+                    headers: { 'Authorization': 'Bearer ' + miToken }
+                });
+                
+                if (!res.ok) throw new Error('No autorizado');
+                
                 catalogoAdmin = await res.json(); 
                 
                 const tbody = document.getElementById('cuerpo-tabla');
@@ -154,8 +155,10 @@
                 const selEditar = document.getElementById('editar-producto');
                 const selEliminar = document.getElementById('eliminar-producto');
                 
-                tbody.innerHTML = ''; selEntrada.innerHTML = '<option value="">Selecciona...</option>';
-                selEditar.innerHTML = '<option value="">Selecciona...</option>'; selEliminar.innerHTML = '<option value="">Selecciona...</option>';
+                tbody.innerHTML = ''; 
+                selEntrada.innerHTML = '<option value="">Selecciona...</option>';
+                selEditar.innerHTML = '<option value="">Selecciona...</option>'; 
+                selEliminar.innerHTML = '<option value="">Selecciona...</option>';
 
                 catalogoAdmin.forEach(p => {
                     tbody.innerHTML += `<tr class="fila-producto"><td><strong>${p.sku}</strong></td><td>${p.nombre}</td>
@@ -163,10 +166,12 @@
                         <td>C$ ${p.precio_compra}</td><td>C$ ${p.precio_venta}</td></tr>`;
                     
                     const opcion = `<option value="${p.id_producto}">${p.nombre} (Disp: ${p.cantidad_disponible})</option>`;
-                    selEntrada.innerHTML += opcion; selEditar.innerHTML += opcion; selEliminar.innerHTML += opcion;
+                    selEntrada.innerHTML += opcion; 
+                    selEditar.innerHTML += opcion; 
+                    selEliminar.innerHTML += opcion;
                 });
             } catch (e) {
-                Swal.fire({ title: 'Error', text: 'Fallo al conectar con la nube.', icon: 'error', confirmButtonColor: '#e74c3c' });
+                Swal.fire({ title: 'Error', text: 'Sesión expirada o error de nube.', icon: 'error', confirmButtonColor: '#e74c3c' });
             }
         }
 
@@ -206,7 +211,7 @@
                 html: html,
                 width: '850px',
                 showCancelButton: true,
-                confirmButtonText: 'Subir a Render',
+                confirmButtonText: 'Subir a la Nube',
                 preConfirm: () => {
                     const productos = [];
                     document.querySelectorAll('.fila-excel').forEach(fila => {
@@ -223,14 +228,15 @@
 
         async function enviarCargaMasiva(productosArray) {
             try {
-                Swal.fire({ title: 'Cargando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 const res = await fetch(`${API_URL}/productos/masivo`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + miToken },
                     body: JSON.stringify(productosArray)
                 });
-                if (res.ok) { Swal.fire('¡Éxito!', 'Inventario actualizado.', 'success'); cargarInventario(); }
-            } catch (error) { Swal.fire('Error', 'No se pudo subir.', 'error'); }
+                if (res.ok) { Swal.fire('¡Éxito!', 'Carga masiva completada.', 'success'); cargarInventario(); }
+                else { throw new Error(); }
+            } catch (error) { Swal.fire('Error', 'No se pudo completar la carga masiva.', 'error'); }
         }
 
         document.getElementById('buscador-tabla-admin').addEventListener('input', function() {
@@ -253,53 +259,67 @@
         document.getElementById('form-editar-producto').addEventListener('submit', async function(e) {
             e.preventDefault();
             try {
-                const res = await fetch(`${urls.productos}/${document.getElementById('editar-producto').value}`, {
+                const res = await fetch(`${API_URL}/productos/${document.getElementById('editar-producto').value}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + miToken },
                     body: JSON.stringify({
-                        nombre: document.getElementById('editar-nombre').value, tipo_unidad: document.getElementById('editar-unidad').value,
+                        nombre: document.getElementById('editar-nombre').value, 
+                        tipo_unidad: document.getElementById('editar-unidad').value,
                         cantidad_disponible: parseFloat(document.getElementById('editar-cantidad').value),
-                        precio_compra: parseFloat(document.getElementById('editar-compra').value), precio_venta: parseFloat(document.getElementById('editar-venta').value)
+                        precio_compra: parseFloat(document.getElementById('editar-compra').value), 
+                        precio_venta: parseFloat(document.getElementById('editar-venta').value)
                     })
                 });
-                if (res.ok) { Swal.fire('Actualizado', '', 'success'); cargarInventario(); }
-            } catch (e) { }
+                if (res.ok) { Swal.fire('Actualizado', 'Producto editado con éxito.', 'success'); cargarInventario(); }
+            } catch (e) { Swal.fire('Error', 'No se pudo editar.', 'error'); }
         });
 
         document.getElementById('form-eliminar-producto').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const conf = await Swal.fire({ title: '¿Borrar?', showCancelButton: true });
+            const conf = await Swal.fire({ title: '¿Estás seguro?', text: "Esta acción eliminará el producto para siempre.", icon: 'warning', showCancelButton: true });
             if (!conf.isConfirmed) return;
             try {
-                const res = await fetch(`${urls.productos}/${document.getElementById('eliminar-producto').value}`, { 
+                const res = await fetch(`${API_URL}/productos/${document.getElementById('eliminar-producto').value}`, { 
                     method: 'DELETE', headers: { 'Authorization': 'Bearer ' + miToken } 
                 });
-                if (res.ok) { Swal.fire('Borrado', '', 'success'); cargarInventario(); }
-            } catch (e) { }
+                if (res.ok) { Swal.fire('Eliminado', 'Producto borrado.', 'success'); cargarInventario(); }
+            } catch (e) { Swal.fire('Error', 'No se pudo eliminar.', 'error'); }
         });
 
         document.getElementById('form-entradas').addEventListener('submit', async function(e) {
             e.preventDefault(); 
             try {
-                const res = await fetch(urls.entradas, {
+                const res = await fetch(`${API_URL}/entradas`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + miToken },
-                    body: JSON.stringify({ id_producto: parseInt(document.getElementById('entrada-producto').value), cantidad_agregada: parseFloat(document.getElementById('entrada-cantidad').value), notas: "Admin" })
+                    body: JSON.stringify({ 
+                        id_producto: parseInt(document.getElementById('entrada-producto').value), 
+                        cantidad_agregada: parseFloat(document.getElementById('entrada-cantidad').value), 
+                        notas: "Entrada Manual Admin" 
+                    })
                 });
-                if (res.ok) { Swal.fire('Sumado', '', 'success'); cargarInventario(); } 
-            } catch (e) {}
+                if (res.ok) { Swal.fire('Inventario Actualizado', 'Se sumó el stock correctamente.', 'success'); cargarInventario(); } 
+            } catch (e) { Swal.fire('Error', 'Fallo al sumar stock.', 'error'); }
         });
 
         document.getElementById('form-nuevo-producto').addEventListener('submit', async function(e) {
             e.preventDefault();
             const prod = {
-                sku: document.getElementById('nuevo-sku').value, nombre: document.getElementById('nuevo-nombre').value,
-                descripcion: "-", id_categoria: 1, tipo_unidad: document.getElementById('nuevo-unidad').value, stock_minimo: 5,
+                sku: document.getElementById('nuevo-sku').value, 
+                nombre: document.getElementById('nuevo-nombre').value,
+                descripcion: "-", id_categoria: 1, 
+                tipo_unidad: document.getElementById('nuevo-unidad').value, 
+                stock_minimo: 5,
                 cantidad: parseFloat(document.getElementById('nuevo-cantidad').value),
-                precio_compra: parseFloat(document.getElementById('nuevo-compra').value), precio_venta: parseFloat(document.getElementById('nuevo-venta').value)
+                precio_compra: parseFloat(document.getElementById('nuevo-compra').value), 
+                precio_venta: parseFloat(document.getElementById('nuevo-venta').value)
             };
             try {
-                const res = await fetch(urls.productos, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + miToken }, body: JSON.stringify(prod) });
-                if (res.ok) { Swal.fire('Creado', '', 'success'); cargarInventario(); } 
-            } catch (e) {}
+                const res = await fetch(`${API_URL}/productos`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + miToken }, 
+                    body: JSON.stringify(prod) 
+                });
+                if (res.ok) { Swal.fire('¡Creado!', 'Nuevo producto en catálogo.', 'success'); cargarInventario(); } 
+            } catch (e) { Swal.fire('Error', 'No se pudo crear.', 'error'); }
         });
 
         cargarInventario();

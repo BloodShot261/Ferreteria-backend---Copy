@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro de Ventas - Ferretería G y M</title>
-    <script src="sweetalert2.js"></script>
-    <script src="sheetjs.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f0f4f8; color: #2c3e50; }
@@ -94,9 +94,9 @@
 
     <script>
         // ========================================================
-        // CONFIGURACIÓN DE URL PARA RENDER
+        // CORRECCIÓN PARA LA NUBE: Uso de rutas relativas
         // ========================================================
-        const API_URL = 'https://ferreteria-backend-cloud.onrender.com';
+        const API_URL = ''; // Se deja en blanco para que apunte automáticamente a Render
         
         const miToken = sessionStorage.getItem('token_gym');
         if (!miToken) { window.location.href = 'login.html'; }
@@ -122,7 +122,6 @@
 
         async function cargarFacturas() {
             try {
-                // CAMBIO: Ahora usa API_URL
                 const res = await fetch(`${API_URL}/facturas`, {
                     headers: { 'Authorization': 'Bearer ' + miToken }
                 });
@@ -194,7 +193,6 @@
 
         async function verDetalles(idFactura) {
             try {
-                // CAMBIO: Ahora usa API_URL
                 const res = await fetch(`${API_URL}/facturas/${idFactura}/detalles`, {
                     headers: { 'Authorization': 'Bearer ' + miToken }
                 });
@@ -262,7 +260,6 @@
             if (!confirmacion.isConfirmed) return;
 
             try {
-                // CAMBIO: Ahora usa API_URL
                 const res = await fetch(`${API_URL}/facturas/${idFactura}/anular`, {
                     method: 'PUT',
                     headers: { 'Authorization': 'Bearer ' + miToken }
@@ -290,7 +287,6 @@
                     didOpen: () => { Swal.showLoading(); }
                 });
 
-                // CAMBIO: Ahora usa API_URL
                 const res = await fetch(`${API_URL}/facturas/exportar`, {
                     headers: { 'Authorization': 'Bearer ' + miToken }
                 });

@@ -14,7 +14,6 @@
         .columna-derecha { flex: 1; display: flex; flex-direction: column; gap: 25px; }
         .panel-seccion { background-color: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border-left: 6px solid #2ecc71; backdrop-filter: blur(5px); }
         
-        /* Estilo del buscador */
         .buscador-input { width: 100%; padding: 12px 15px; border: 2px solid #3498db; border-radius: 8px; box-sizing: border-box; font-size: 15px; margin-bottom: 15px; transition: box-shadow 0.3s; }
         .buscador-input:focus { outline: none; box-shadow: 0 0 10px rgba(52, 152, 219, 0.4); }
 
@@ -82,8 +81,8 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN DE URL PARA RENDER
-        const API_URL = 'https://ferreteria-backend-cloud.onrender.com';
+        // CONFIGURACIÓN DE NUBE (Ruta relativa)
+        const API_URL = ''; 
 
         const miToken = sessionStorage.getItem('token_gym');
         if (!miToken) { window.location.href = 'login.html'; }
@@ -95,16 +94,14 @@
 
         let catalogoGlobal = []; 
         let carritoCompras = []; 
-        
-        // CAMBIO: Ahora las URLs usan el servidor de Render
-        const urls = { 
-            inventario: `${API_URL}/inventario`, 
-            ventas: `${API_URL}/ventas` 
-        };
 
         async function cargarInventario() {
             try {
-                const res = await fetch(urls.inventario);
+                // CAMBIO: Se agregó el token para que la nube permita ver el inventario
+                const res = await fetch(`${API_URL}/inventario`, {
+                    headers: { 'Authorization': 'Bearer ' + miToken }
+                });
+                
                 catalogoGlobal = await res.json(); 
                 const tbody = document.getElementById('cuerpo-tabla');
                 const select = document.getElementById('venta-producto');
@@ -117,21 +114,16 @@
                     select.innerHTML += `<option value="${p.id_producto}">${p.nombre} (Disp: ${p.cantidad_disponible})</option>`;
                 });
             } catch (e) {
-                Swal.fire({ title: 'Error', text: 'No se pudo cargar el inventario del servidor en la nube.', icon: 'error', confirmButtonColor: '#e74c3c' });
+                Swal.fire({ title: 'Error', text: 'No se pudo cargar el inventario de la nube.', icon: 'error', confirmButtonColor: '#e74c3c' });
             }
         }
 
         document.getElementById('buscador-tabla').addEventListener('input', function() {
             const textoBuscado = this.value.toLowerCase();
             const filas = document.querySelectorAll('.fila-producto');
-
             filas.forEach(fila => {
                 const contenidoFila = fila.textContent.toLowerCase();
-                if (contenidoFila.includes(textoBuscado)) {
-                    fila.style.display = ''; 
-                } else {
-                    fila.style.display = 'none'; 
-                }
+                fila.style.display = contenidoFila.includes(textoBuscado) ? '' : 'none';
             });
         });
 
@@ -172,7 +164,7 @@
             const { value: nombreCliente, isConfirmed } = await Swal.fire({
                 title: 'Datos de la Factura',
                 input: 'text',
-                inputLabel: 'Nombre del Cliente (Dejar en blanco para "Mostrador")',
+                inputLabel: 'Nombre del Cliente',
                 inputPlaceholder: 'Ej. Juan Pérez',
                 showCancelButton: true,
                 confirmButtonText: 'Procesar Cobro',
@@ -198,44 +190,30 @@
             });
 
             try {
-                // CAMBIO: Ahora usa la URL de Render
-                const res = await fetch(urls.ventas, { 
+                const res = await fetch(`${API_URL}/ventas`, { 
                     method: 'POST', 
                     headers: { 
                         'Content-Type': 'application/json', 
                         'Authorization': 'Bearer ' + miToken 
                     }, 
                     body: JSON.stringify({ 
-                        cliente: nombreCliente, 
+                        cliente: nombreCliente || 'Cliente Mostrador', 
                         carrito: carritoFormateado, 
                         total: granTotal 
                     }) 
                 });
 
                 const data = await res.json();
+                if (!res.ok) throw new Error(data.mensaje || 'Error en la factura.');
 
-                if (!res.ok) {
-                    throw new Error(data.mensaje || 'Problema al procesar la factura.');
-                }
-
-                Swal.fire({ 
-                    title: '¡Factura Emitida!', 
-                    text: `La venta se guardó correctamente. Factura #${data.id_factura}`, 
-                    icon: 'success', 
-                    confirmButtonColor: '#2ecc71' 
-                });
+                Swal.fire({ title: '¡Factura Emitida!', text: `Venta guardada. Folio #${data.id_factura}`, icon: 'success', confirmButtonColor: '#2ecc71' });
 
                 carritoCompras = []; 
                 dibujarTicket(); 
                 cargarInventario(); 
 
             } catch (error) { 
-                Swal.fire({ 
-                    title: 'Venta Rechazada', 
-                    text: error.message, 
-                    icon: 'error', 
-                    confirmButtonColor: '#e74c3c' 
-                }); 
+                Swal.fire({ title: 'Venta Fallida', text: error.message, icon: 'error', confirmButtonColor: '#e74c3c' }); 
             } finally { 
                 this.innerText = "💲 Cobrar Cuenta"; 
                 this.disabled = false; 
@@ -244,7 +222,7 @@
 
         document.getElementById('btn-vaciar').addEventListener('click', async () => { 
             if (carritoCompras.length === 0) return;
-            const confirmacion = await Swal.fire({ title: '¿Vaciar cuenta?', text: "Se eliminarán los productos.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#95a5a6', confirmButtonText: 'Sí, vaciar', cancelButtonText: 'Cancelar' });
+            const confirmacion = await Swal.fire({ title: '¿Vaciar cuenta?', text: "Se eliminarán los productos.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#95a5a6', confirmButtonText: 'Sí, vaciar' });
             if (confirmacion.isConfirmed) { carritoCompras = []; dibujarTicket(); }
         });
 

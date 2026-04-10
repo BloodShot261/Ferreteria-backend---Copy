@@ -63,8 +63,8 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN DE URL PARA RENDER
-        const API_URL = 'https://ferreteria-backend-cloud.onrender.com';
+        // CONFIGURACIÓN PARA RENDER: Usamos ruta relativa para evitar bloqueos
+        const API_URL = ''; 
 
         document.getElementById('form-login').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -76,7 +76,6 @@
             const pass = document.getElementById('password').value;
 
             try {
-                // CAMBIO: Ahora usa API_URL para el login
                 const res = await fetch(`${API_URL}/login`, {
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' },
@@ -86,13 +85,13 @@
                 if (res.ok) {
                     const data = await res.json();
                     
-                    // Guardamos la llave universal
+                    // Guardamos el token y las pantallas permitidas para la navegación
                     sessionStorage.setItem('token_gym', data.token);
+                    sessionStorage.setItem('pantallas', JSON.stringify(data.pantallas_permitidas));
                     
-                    // ENRUTAMIENTO INTELIGENTE
                     if (data.rol === 'admin') {
                         window.location.href = 'admin.html';
-                    } else if (data.rol === 'cajero') {
+                    } else {
                         window.location.href = 'index.html';
                     }
                 } else {
@@ -107,7 +106,7 @@
             } catch (error) {
                 Swal.fire({
                     title: 'Error de Conexión',
-                    text: 'No se pudo conectar al servidor en la nube.',
+                    text: 'No se pudo conectar con la nube.',
                     icon: 'warning',
                     confirmButtonColor: '#f39c12'
                 });
