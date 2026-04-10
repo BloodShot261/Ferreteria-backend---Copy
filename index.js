@@ -20,13 +20,15 @@ app.use(express.static('public'));
 // ==========================================
 // CAPA 2: CONEXIÓN A LA BASE DE DATOS
 // ==========================================
-// CAMBIO PARA LA NUBE 3: Variables de entorno ocultas
 const conexion = mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'jazer',      
-    password: process.env.DB_PASSWORD || '26122000!',      
-    database: process.env.DB_NAME || 'ferreteria_inventario',
-    port: process.env.DB_PORT || 3306
+    // Apuntamos al servidor de Aiven que vimos en tu MySQL Workbench
+    host: process.env.DB_HOST || 'ferreteria-db-jazersolo16-e8d0.k.aivencloud.com', 
+    user: process.env.DB_USER || 'avnadmin', // Suele ser avnadmin en Aiven (cámbialo si usas otro)
+    password: process.env.DB_PASSWORD || 'contrasena_oculta', // Pon la contraseña de Aiven aquí
+    database: process.env.DB_NAME || 'defaultdb', // <-- ESTE ERA EL ERROR PRINCIPAL
+    port: process.env.DB_PORT || 14713,
+    // Aiven requiere conexión segura (SSL) casi siempre, esta línea es vital:
+    ssl: { rejectUnauthorized: false } 
 });
 
 conexion.connect((error) => {
